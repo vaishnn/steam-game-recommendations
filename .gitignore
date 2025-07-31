@@ -1,0 +1,34 @@
+```/Users/vaishnav/Documents/Projects/Recommendation System/.gitignore
+# Python virtual environment
+venv/
+.venv/
+
+# Python bytecode files
+__pycache__/
+*.pyc
+
+# IDE-specific files (common ones)
+.idea/      # For PyCharm/IntelliJ
+.vscode/    # For VS Code
+*.iml       # IntelliJ IDEA module files
+.DS_Store   # macOS system file
+
+# Local configuration files
+.env
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Test/Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+.nox/
+
+# PyInstaller/Dist-specific files
+build/
+dist/
+*.spec
+
+# Data files (not for committing to repo)
+data_games/
