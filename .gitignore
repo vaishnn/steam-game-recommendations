@@ -1,8 +1,10 @@
 ```/Users/vaishnav/Documents/Projects/Recommendation System/.gitignore
-# Python virtual environment
+
 venv/
 .venv/
-
+.ropeproject/
+.test_files
+oruse-aws-key-1.pem
 # Python bytecode files
 __pycache__/
 *.pyc

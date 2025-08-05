@@ -233,7 +233,7 @@ def ParseSteamGame(app):
         for sub in package['subs']:
           subs.append({'text': SanitizeText(sub['option_text']),
                        'description': sub['option_description'],
-                       'price': round(float(sub['price_in_cents_with_discount']) * 0.01, 2) }) 
+                       'price': round(float(sub['price_in_cents_with_discount']) * 0.01, 2) })
 
       game['packages'].append({'title': SanitizeText(package['title']), 'description': SanitizeText(package['description']), 'subs': subs})
 

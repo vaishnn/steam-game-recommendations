@@ -1,0 +1,316 @@
+insert:
+  users: |
+    INSERT IGNORE INTO users (username, email, steam_id, registration_date, last_login, user_preferences) VALUES (%s, %s, %s, %s, %s, %s)
+  games: |
+    INSERT INTO games (
+        id, name, release_date, price, positive_reviews, negative_reviews, recommendations,
+        peak_ccu, total_hours_played, peak_ccu_forever, metacritic_score, metacritic_url, required_age, dlc_count,
+        achievements_count, avg_playtime_2weeks, avg_playtime_forever,
+        median_playtime_2weeks, median_playtime_forever, supports_windows,
+        supports_mac, supports_linux, header_image_url, website_url, support_url,
+        support_email, estimated_owners, user_score, score_rank, about_the_game,
+        detailed_description, short_description, reviews_summary, notes
+    ) VALUES (
+        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+    )
+    ON DUPLICATE KEY UPDATE
+        name=VALUES(name), release_date=VALUES(release_date), price=VALUES(price),
+        positive_reviews=VALUES(positive_reviews), negative_reviews=VALUES(negative_reviews),
+        recommendations=VALUES(recommendations), peak_ccu=VALUES(peak_ccu),
+        total_hours_played=VALUES(total_hours_played), peak_ccu_forever=VALUES(peak_ccu_forever),
+        metacritic_score=VALUES(metacritic_score), metacritic_url=VALUES(metacritic_url),
+        required_age=VALUES(required_age), dlc_count=VALUES(dlc_count),
+        achievements_count=VALUES(achievements_count), avg_playtime_2weeks=VALUES(avg_playtime_2weeks),
+        avg_playtime_forever=VALUES(avg_playtime_forever), median_playtime_2weeks=VALUES(median_playtime_2weeks),
+        median_playtime_forever=VALUES(median_playtime_forever), supports_windows=VALUES(supports_windows),
+        supports_mac=VALUES(supports_mac), supports_linux=VALUES(supports_linux),
+        header_image_url=VALUES(header_image_url), website_url=VALUES(website_url),
+        support_url=VALUES(support_url), support_email=VALUES(support_email),
+        estimated_owners=VALUES(estimated_owners), user_score=VALUES(user_score),
+        score_rank=VALUES(score_rank), about_the_game=VALUES(about_the_game),
+        detailed_description=VALUES(detailed_description), short_description=VALUES(short_description),
+        reviews_summary=VALUES(reviews_summary), notes=VALUES(notes)
+  developers: |
+    INSERT INTO developers (name) VALUES (%s)
+  publishers: |
+    INSERT INTO publishers (name) VALUES (%s)
+  categories: |
+    INSERT INTO categories (name) VALUES (%s)
+  genres: |
+    INSERT INTO genres (name) VALUES (%s)
+  languages: |
+    INSERT INTO languages (name) VALUES (%s)
+  audio_languages: |
+    INSERT INTO audio_languages (name) VALUES (%s)
+  tags: |
+    INSERT INTO tags (name) VALUES (%s)
+  game_developers: |
+    INSERT IGNORE INTO game_developers (game_id, developer_id) VALUES (%s, %s)
+  game_publishers: |
+    INSERT IGNORE INTO game_publishers (game_id, publisher_id) VALUES (%s, %s)
+  game_categories: |
+    INSERT IGNORE INTO game_categories (game_id, category_id) VALUES (%s, %s)
+  game_genres: |
+    INSERT IGNORE INTO game_genres (game_id, genre_id) VALUES (%s, %s)
+  game_audio_languages: |
+    INSERT IGNORE INTO game_audio_languages (game_id, language_id) VALUES (%s, %s)
+  game_supported_languages: |
+    INSERT IGNORE INTO game_supported_languages (game_id, language_id) VALUES (%s, %s)
+  game_tags: |
+    INSERT IGNORE INTO game_tags (game_id, tag_id, tag_value) VALUES (%s, %s, %s)
+  user_game_interactions: |
+    INSERT INTO user_game_interactions (user_id, game_id, interaction_type, interaction_value, interaction_date) VALUES (%s, %s, %s, %s, %s)
+  game_reviews: |
+    INSERT INTO game_reviews (game_id, user_id, external_reviewer_id, review_text, score, is_recommended, review_date, review_source, language) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+  game_rankings: |
+    INSERT INTO game_rankings (id, game_id, ranking_type, ranking_value, rank, last_calculated_date) VALUES (%s, %s, %s, %s, %s, %s)
+  achievements: |
+    INSERT INTO achievements (id, game_id, external_id, name, description, icon_url, is_hidden) VALUES (%s, %s, %s, %s, %s, %s, %s)
+  user_achievements: |
+    INSERT INTO user_achievements (user_id, achievement_id, unlocked_date) VALUES (%s, %s, %s)
+
+drop_order:
+  - user_achievements
+  - achievements
+  - game_reviews
+  - game_rankings
+  - user_game_interactions
+  - users
+  - game_developers
+  - developers
+  - game_publishers
+  - publishers
+  - game_categories
+  - categories
+  - game_genres
+  - genres
+  - game_audio_languages
+  - audio_languages
+  - game_supported_languages
+  - languages
+  - game_tags
+  - tags
+  - games
+
+create_order:
+  - developers
+  - publishers
+  - categories
+  - genres
+  - languages
+  - audio_languages
+  - tags
+  - users
+  - games
+  - game_developers
+  - game_publishers
+  - game_categories
+  - game_genres
+  - game_audio_languages
+  - game_supported_languages
+  - game_tags
+  - user_game_interactions
+  - game_reviews
+  - game_rankings
+  - achievements
+  - user_achievements
+
+tables:
+  users: |
+    CREATE TABLE IF NOT EXISTS users (
+            user_id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            email VARCHAR(255) UNIQUE,
+            steam_id BIGINT UNIQUE,
+            registration_date DATETIME,
+            last_login DATETIME,
+            user_preferences JSON
+    );
+  games: |
+    CREATE TABLE IF NOT EXISTS games (
+        id INT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        release_date DATE,
+        price DECIMAL(10, 2),
+        positive_reviews INT,
+        negative_reviews INT,
+        recommendations INT,
+        peak_ccu INT,
+        total_hours_played INT,
+        peak_ccu_forever INT,
+        metacritic_score INT,
+        metacritic_url VARCHAR(512),
+        required_age INT,
+        dlc_count INT,
+        achievements_count INT,
+        avg_playtime_2weeks INT,
+        avg_playtime_forever INT,
+        median_playtime_2weeks INT,
+        median_playtime_forever INT,
+        supports_windows BOOLEAN,
+        supports_mac BOOLEAN,
+        supports_linux BOOLEAN,
+        header_image_url VARCHAR(512),
+        website_url VARCHAR(512),
+        support_url VARCHAR(512),
+        support_email VARCHAR(255),
+        estimated_owners VARCHAR(50),
+        user_score INT,
+        score_rank VARCHAR(50),
+        about_the_game TEXT,
+        detailed_description TEXT,
+        short_description TEXT,
+        reviews_summary TEXT,
+        notes TEXT
+    );
+  developers: |
+    CREATE TABLE IF NOT EXISTS developers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+    );
+  publishers: |
+    CREATE TABLE IF NOT EXISTS publishers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+    );
+  categories: |
+    CREATE TABLE IF NOT EXISTS categories (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+    );
+  genres: |
+    CREATE TABLE IF NOT EXISTS genres (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+    );
+  audio_languages: |
+    CREATE TABLE IF NOT EXISTS audio_languages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+    );
+  languages: |
+    CREATE TABLE IF NOT EXISTS languages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+    );
+  tags: |
+    CREATE TABLE IF NOT EXISTS tags (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL
+    );
+  game_developers: |
+    CREATE TABLE IF NOT EXISTS game_developers (
+        game_id INT NOT NULL,
+        developer_id INT NOT NULL,
+        PRIMARY KEY (game_id, developer_id),
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+        FOREIGN KEY (developer_id) REFERENCES developers(id) ON DELETE CASCADE
+    );
+  game_publishers: |
+    CREATE TABLE IF NOT EXISTS game_publishers (
+        game_id INT NOT NULL,
+        publisher_id INT NOT NULL,
+        PRIMARY KEY (game_id, publisher_id),
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+        FOREIGN KEY (publisher_id) REFERENCES publishers(id) ON DELETE CASCADE
+    );
+  game_categories: |
+    CREATE TABLE IF NOT EXISTS game_categories (
+        game_id INT NOT NULL,
+        category_id INT NOT NULL,
+        PRIMARY KEY (game_id, category_id),
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+    );
+  game_genres: |
+    CREATE TABLE IF NOT EXISTS game_genres (
+        game_id INT NOT NULL,
+        genre_id INT NOT NULL,
+        PRIMARY KEY (game_id, genre_id),
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+        FOREIGN KEY (genre_id) REFERENCES genres(id) ON DELETE CASCADE
+    );
+  game_audio_languages: |
+    CREATE TABLE IF NOT EXISTS game_audio_languages (
+        game_id INT NOT NULL,
+        language_id INT NOT NULL,
+        PRIMARY KEY (game_id, language_id),
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+        FOREIGN KEY (language_id) REFERENCES audio_languages(id) ON DELETE CASCADE
+    );
+  game_supported_languages: |
+    CREATE TABLE IF NOT EXISTS game_supported_languages (
+        game_id INT NOT NULL,
+        language_id INT NOT NULL,
+        PRIMARY KEY (game_id, language_id),
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+        FOREIGN KEY (language_id) REFERENCES languages(id) ON DELETE CASCADE
+    );
+  game_tags: |
+    CREATE TABLE IF NOT EXISTS game_tags (
+        game_id INT NOT NULL,
+        tag_id INT NOT NULL,
+        tag_value INT,
+        PRIMARY KEY (game_id, tag_id),
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+        FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+    );
+  user_game_interactions: |
+    CREATE TABLE IF NOT EXISTS user_game_interactions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        game_id INT NOT NULL,
+        interaction_type VARCHAR(50) NOT NULL,
+        interaction_value DECIMAL(10, 2),
+        interaction_date DATETIME NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+    );
+  game_reviews: |
+    CREATE TABLE IF NOT EXISTS game_reviews (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        game_id INT NOT NULL,
+        user_id INT,
+        external_reviewer_id VARCHAR(255),
+        review_text TEXT NOT NULL,
+        score INT,
+        is_recommended BOOLEAN,
+        review_date DATETIME NOT NULL,
+        review_source VARCHAR(100),
+        language VARCHAR(50),
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
+    );
+  game_rankings: |
+    CREATE TABLE IF NOT EXISTS game_rankings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        game_id INT NOT NULL,
+        ranking_type VARCHAR(100) NOT NULL,
+        ranking_value DECIMAL(18, 5) NOT NULL,
+        rank INT,
+        last_calculated_date DATETIME NOT NULL,
+        UNIQUE KEY game_ranking_type_unique (game_id, ranking_type),
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+    );
+  achievements: |
+    CREATE TABLE IF NOT EXISTS achievements (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        game_id INT NOT NULL,
+        external_id VARCHAR(255) UNIQUE,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        icon_url VARCHAR(512),
+        is_hidden BOOLEAN,
+        FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+    );
+  user_achievements: |
+    CREATE TABLE IF NOT EXISTS user_achievements (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        achievement_id INT NOT NULL,
+        unlocked_date DATETIME NOT NULL,
+        UNIQUE KEY user_achievement_unique (user_id, achievement_id),
+        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+        FOREIGN KEY (achievement_id) REFERENCES achievements(id) ON DELETE CASCADE
+    );
