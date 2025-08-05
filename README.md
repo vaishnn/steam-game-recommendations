@@ -101,14 +101,6 @@ The database is hosted on AWS RDS and uses a PostgreSQL (or your chosen) engine.
 **Key Tables:**
 
 ```mermaid
-  graph TD;
-      A-->B;
-      A-->C;
-      B-->D;
-      C-->D;
-```
-
-```mermaid
 erDiagram
     users {
         int user_id PK
