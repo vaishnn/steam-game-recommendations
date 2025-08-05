@@ -5,6 +5,7 @@ venv/
 .ropeproject/
 .test_files
 oruse-aws-key-1.pem
+SteamChart Data/
 
 # Python bytecode files
 __pycache__/

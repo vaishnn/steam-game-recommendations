@@ -12,10 +12,8 @@ A personalized game recommendation system for Steam users. This project leverage
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
-- [Usage](#usage)
 - [Database](#database)
 - [Future Work](#future-work)
-- [Contributing](#contributing)
 - [License](#license)
 - [Contact](#contact)
 
