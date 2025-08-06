@@ -1,0 +1,14 @@
+# this is for configuration as name suggests
+
+scrapper_settings:
+  sleep: 1.5
+  timeout: 20
+  use_steamspy: true
+
+steam_api:
+  currency: "us"
+  language: "en"
+
+file_paths:
+  schema: "schema.json"
+  endpoints: "endpoints.json"

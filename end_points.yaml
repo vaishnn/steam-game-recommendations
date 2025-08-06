@@ -2,10 +2,13 @@
 # This file stores the API endpoints for the application.
 
 # User related endpoints
-steam:
-  get_app_list: "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
-  get_app_details_base_url: "https://store.steampowered.com/appreviews/"
-  get_app_details: "https://store.steampowered.com/api/appdetails"
-how_long_to_beat:
-  get_game_details_base_url: "https://howlongtobeat.com/api/search"
-  GAME_URL_PREFIX: "https://howlongtobeat.com/game/"
+STEAM:
+  GET_APP_LIST: "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
+  GET_APP_DETAILS_BASE_URL: "https://store.steampowered.com/appreviews/"
+  GET_APP_DETAILS: "https://store.steampowered.com/api/appdetails"
+  GET_USER_STATS_FOR_GAMES: "https://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v2/"
+  GET_USER_REVIEW: "https://store.steampowered.com/appreviews/"
+TWITCH:
+  IGDB_GAME_URL: "https://api.igdb.com/v4/games"
+  IGDB_GAME_TIME_URL: "https://api.igdb.com/v4/game_time_to_beats"
+  TWITCH_ACCESS_TOKEN: "https://id.twitch.tv/oauth2/token"
