@@ -14,7 +14,7 @@ create_order:
   - apps
   - achievements
   - reviews # New master reviews table
-  - app_review # New junction table
+  - app_reviews # New junction table
   - app_developers
   - app_publishers
   - app_genres
@@ -98,8 +98,8 @@ queries:
     is_processed: "SELECT 1 FROM scrape_status WHERE appid = %s"
     mark_processed: "INSERT INTO scrape_status (appid, status) VALUES (%s, %s) ON DUPLICATE KEY UPDATE status=VALUES(status), timestamp=CURRENT_TIMESTAMP"
   lookup_tables:
-    insert_ignore: "INSERT IGNORE INTO {table} (name) VALUES (%s)"
-    select_id: "SELECT id FROM {table} WHERE name = %s"
+    insert_ignore: "INSERT IGNORE INTO {table} VALUES (%s)"
+    select_id: "SELECT id FROM {table} WHERE name = (%s)"
   junction_tables:
     insert_ignore: "INSERT IGNORE INTO {table} VALUES (%s, %s)"
     insert_language: "INSERT INTO app_supported_languages (app_id, language_id, is_full_audio) VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE is_full_audio=VALUES(is_full_audio)"
