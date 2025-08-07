@@ -11,7 +11,7 @@ static/
 templates/
 applist.json
 intro.py
-scraper_*
+scraper_*.*
 
 __pycache__/
 *.pyc
