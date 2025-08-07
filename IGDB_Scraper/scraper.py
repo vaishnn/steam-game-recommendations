@@ -62,11 +62,13 @@ class SteamAPI:
         self.settings = scraper_settings
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': f'SteamScraper/{__version__}'})
+        logging.info("SteamAPI initialized")
 
     def _do_requests(self, url: str, params: Optional[dict] = None) -> dict:
         try:
             response = self.session.get(url, params = params, timeout = self.settings['timeout'])
             response.raise_for_status()
+            logging.info(f"Request SteamAPI successful: {response.status_code}")
             return response.json() if response.text else {}
         except requests.exceptions.RequestException as e:
             logging.error(f"Request failed: {e}")

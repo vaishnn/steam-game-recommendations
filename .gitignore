@@ -6,12 +6,15 @@ venv/
 .test_files
 oruse-aws-key-1.pem
 SteamChart Data/
+.old_files/
+static/
+templates/
+applist.json
+intro.py
+scraper_*
 
-# Python bytecode files
 __pycache__/
 *.pyc
-
-# IDE-specific files (common ones)
 .idea/      # For PyCharm/IntelliJ
 .vscode/    # For VS Code
 *.iml       # IntelliJ IDEA module files
