@@ -32,3 +32,40 @@
 [I 14:56:45] Adding pending DLC link for DLC ID 1076580 and base game ID 495480
 [I 14:57:50] Adding pending DLC link for DLC ID 3494750 and base game ID 3033660
 [I 14:58:34] Adding pending DLC link for DLC ID 1959290 and base game ID 1617580
+[I 15:04:05] Adding pending DLC link for DLC ID 443204 and base game ID 380080
+[I 15:05:13] Adding pending DLC link for DLC ID 258666 and base game ID 24010
+[I 15:06:03] Adding pending DLC link for DLC ID 420250 and base game ID 416630
+[I 15:06:26] Adding pending DLC link for DLC ID 3126390 and base game ID 1214650
+[I 15:06:47] Adding pending DLC link for DLC ID 2774060 and base game ID 2335140
+[I 15:07:33] Adding pending DLC link for DLC ID 548420 and base game ID 218620
+[I 15:07:57] Adding pending DLC link for DLC ID 3464410 and base game ID 1562940
+[I 15:08:11] Adding pending DLC link for DLC ID 937650 and base game ID 690530
+[I 15:09:17] Adding pending DLC link for DLC ID 1692827 and base game ID 1058760
+[I 15:10:38] Adding pending DLC link for DLC ID 700700 and base game ID 545820
+[I 15:10:52] Adding pending DLC link for DLC ID 1923620 and base game ID 1919090
+[I 15:15:33] Adding pending DLC link for DLC ID 2222410 and base game ID 1196310
+[I 15:16:20] Adding pending DLC link for DLC ID 1947983 and base game ID 1879640
+[I 15:19:25] Adding pending DLC link for DLC ID 3479380 and base game ID 220700
+[I 15:22:31] Adding pending DLC link for DLC ID 73057 and base game ID 42910
+[I 15:24:05] Adding pending DLC link for DLC ID 2306370 and base game ID 1076160
+[I 15:24:16] Adding pending DLC link for DLC ID 1667850 and base game ID 962240
+[I 15:27:39] Adding pending DLC link for DLC ID 2410760 and base game ID 1384160
+[I 15:28:02] Adding pending DLC link for DLC ID 3471190 and base game ID 2118420
+[I 15:28:17] Adding pending DLC link for DLC ID 2640850 and base game ID 321360
+[I 15:31:05] Adding pending DLC link for DLC ID 2882510 and base game ID 2783560
+[I 15:34:17] Adding pending DLC link for DLC ID 952480 and base game ID 946780
+[I 15:35:42] Adding pending DLC link for DLC ID 1860910 and base game ID 1401750
+[I 15:35:57] Adding pending DLC link for DLC ID 1643867 and base game ID 875100
+[I 15:36:34] Adding pending DLC link for DLC ID 1921230 and base game ID 1700550
+[I 15:39:26] Adding pending DLC link for DLC ID 204901 and base game ID 200010
+[I 15:39:42] Adding pending DLC link for DLC ID 2562860 and base game ID 2072450
+[I 15:42:43] Adding pending DLC link for DLC ID 2502100 and base game ID 1449070
+[I 15:43:06] Adding pending DLC link for DLC ID 461931 and base game ID 397190
+[I 15:43:58] Adding pending DLC link for DLC ID 1080140 and base game ID 630640
+[I 15:45:00] Adding pending DLC link for DLC ID 1267340 and base game ID 363890
+[I 15:46:30] Adding pending DLC link for DLC ID 3373260 and base game ID 1811910
+[W 15:46:57] Shutdown signal received...
+[I 15:46:57] Attempting to resolve pending DLC links
+[E 15:46:57] Failed to resolve pending DLC links: 'utility_queries'
+[I 15:46:57] Scrape session concluded. Processed 266 new apps.
+[I 15:46:57] Done

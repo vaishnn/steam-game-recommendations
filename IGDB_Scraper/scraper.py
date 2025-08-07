@@ -125,51 +125,51 @@ class SteamAPI:
             rev.append(r)
         return rev
 
-class IGDB_API(SteamAPI):
-    def __init__(self, scraper_settings):
-        super().__init__(steam_api_config={}, scraper_settings=scraper_settings)
-        self.client_id = os.getenv("TWITCH_CLIENT_ID")
-        self.client_secret = os.getenv("TWITCH_CLIENT_SECRET")
-        self.access_token = self._get_twitch_access_token()
-        self.headers = {'Client-ID': self.client_id, 'Authorization': f'Bearer {self.access_token}'} if self.access_token else {}
+# class IGDB_API(SteamAPI):
+#     def __init__(self, scraper_settings):
+#         super().__init__(steam_api_config={}, scraper_settings=scraper_settings)
+#         self.client_id = os.getenv("TWITCH_CLIENT_ID")
+#         self.client_secret = os.getenv("TWITCH_CLIENT_SECRET")
+#         self.access_token = self._get_twitch_access_token()
+#         self.headers = {'Client-ID': self.client_id, 'Authorization': f'Bearer {self.access_token}'} if self.access_token else {}
 
-    def _get_twitch_access_token(self) -> Optional[str]:
-        url = ENDPOINTS['TWITCH']['TWITCH_ACCESS_TOKEN']
-        params = {"client_id": self.client_id, "client_secret": self.client_secret, "grant_type": "client_credentials"}
-        try:
-            response = requests.post(url, params=params)
-            response.raise_for_status()
-            logging.info("Successfully obtained Twitch/IGDB access token.")
-            return response.json().get("access_token")
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Failed to get Twitch access token: {e}")
-            return None
+#     def _get_twitch_access_token(self) -> Optional[str]:
+#         url = ENDPOINTS['TWITCH']['TWITCH_ACCESS_TOKEN']
+#         params = {"client_id": self.client_id, "client_secret": self.client_secret, "grant_type": "client_credentials"}
+#         try:
+#             response = requests.post(url, params=params)
+#             response.raise_for_status()
+#             logging.info("Successfully obtained Twitch/IGDB access token.")
+#             return response.json().get("access_token")
+#         except requests.exceptions.RequestException as e:
+#             logging.error(f"Failed to get Twitch access token: {e}")
+#             return None
 
-    def fetch_time_to_beat_by_name(self, game_name: str) -> Optional[dict]:
-        if not self.headers: return None
-        better_name = game_name.replace('"', '\\"')
-        id_query = f"fields id; where name={better_name}; limit 1"
-        game_data = requests.post(ENDPOINTS['TWITCH']['IGDB_GAME_URL'], headers=self.headers, data=id_query)
+#     def fetch_time_to_beat_by_name(self, game_name: str) -> Optional[dict]:
+#         if not self.headers: return None
+#         better_name = game_name.replace('"', '\\"')
+#         id_query = f"fields id; where name={better_name}; limit 1"
+#         game_data = requests.post(ENDPOINTS['TWITCH']['IGDB_GAME_URL'], headers=self.headers, data=id_query)
 
-        if not game_data:
-            logging.debug(f"IGDB: Game '{game_name}' not found")
-            return None
-        game_id = game_data[0]['id'] #type: ignore
+#         if not game_data:
+#             logging.debug(f"IGDB: Game '{game_name}' not found")
+#             return None
+#         game_id = game_data[0]['id'] #type: ignore
 
-        time_query = f"fields normally, hastly, completely; where game_id = {game_id}; limit 1"
+#         time_query = f"fields normally, hastly, completely; where game_id = {game_id}; limit 1"
 
 
 
-        ttb_data = requests.post(ENDPOINTS['TWITCH']['IGDB_TIME_TO_BEAT_URL'], headers=self.headers, data=time_query)
-        if not ttb_data:
-            logging.debug(f"IGDB: Time to beat data not found for game '{game_name}'")
-            return None
-        ttb = ttb_data[0] #type: ignore
-        return {
-            "main": round(ttb.get('hastly', 0) / 3600, 2) if ttb.get('hastly') else None,
-            "extras": round(ttb.get('normally', 0) / 3600, 2) if ttb.get('normally') else None,
-            "completionist": round(ttb.get('completely', 0) / 3600, 2) if ttb.get('completely') else None
-        }
+#         ttb_data = requests.post(ENDPOINTS['TWITCH']['IGDB_TIME_TO_BEAT_URL'], headers=self.headers, data=time_query)
+#         if not ttb_data:
+#             logging.debug(f"IGDB: Time to beat data not found for game '{game_name}'")
+#             return None
+#         ttb = ttb_data[0] #type: ignore
+#         return {
+#             "main": round(ttb.get('hastly', 0) / 3600, 2) if ttb.get('hastly') else None,
+#             "extras": round(ttb.get('normally', 0) / 3600, 2) if ttb.get('normally') else None,
+#             "completionist": round(ttb.get('completely', 0) / 3600, 2) if ttb.get('completely') else None
+#         }
 
 class DatabaseManager:
     """
@@ -366,7 +366,7 @@ class SteamScraperApplication:
     def __init__(self, drop_tables: bool = False):
         self.db = DatabaseManager(drop_tables)
         self.steam_api = SteamAPI(CONFIG['steam_api'], CONFIG['scraper_settings'])
-        self.igdb_api = IGDB_API(CONFIG['scraper_settings'])
+        # self.igdb_api = IGDB_API(CONFIG['scraper_settings'])
 
     def _load_and_validate_credentials(self):
         logging.info("Loading Credentials from .env file")
@@ -433,10 +433,10 @@ class SteamScraperApplication:
                 self.db.add_app_and_relations(parsed_data)
 
                 if app_type == "game":
-                    game_name = parsed_data['main_dict']['name']
-                    if game_name:
-                        time_data = self.igdb_api.fetch_time_to_beat_by_name(game_name)
-                        if time_data: self.db.update_time_to_beat(appid, time_data)
+                    # game_name = parsed_data['main_dict']['name']
+                    # if game_name:
+                    #     time_data = self.igdb_api.fetch_time_to_beat_by_name(game_name)
+                    #     if time_data: self.db.update_time_to_beat(appid, time_data)
                     if parsed_data['main_dict']['achievements_count'] > 0:
                         self.db.add_achievements(self.steam_api.get_achievements(appid_str))
                 self.db.add_reviews(self.steam_api.get_reviews(appid_str), appid_str)
@@ -563,6 +563,6 @@ class SteamScraperApplication:
             return 0.0
 
 if __name__ == '__main__':
-    scraper = SteamScraperApplication(False)
+    scraper = SteamScraperApplication(True)
     scraper.run()
     logging.info("Done")
