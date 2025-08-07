@@ -1,0 +1,7 @@
+[I 14:14:57] Successfully obtained Twitch/IGDB access token.
+[I 14:14:57] Steam Scraper 0.1 starting.
+[I 14:14:57] Loading Applist from Cache: applist.json
+[I 14:14:58] Found 259830 total apps on steam.
+[I 14:14:58] Resuming progress. Found 21 apps in database.
+[I 14:15:18] Adding pending DLC link for DLC ID 357080 and base game ID 298830
+[I 14:16:29] Adding pending DLC link for DLC ID 2820320 and base game ID 393380

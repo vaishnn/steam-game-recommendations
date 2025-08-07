@@ -7,10 +7,8 @@ import requests
 import json
 import time
 import traceback
-import argparse
 from random import shuffle
 import pymysql
-from pymysql.cursors import DictCursor
 import datetime as dt
 import logging
 import yaml
@@ -26,11 +24,9 @@ try:
         CONFIG = yaml.safe_load(f)
 except FileNotFoundError:
     logging.error(f"{CONFIG_FILE} not found")
-    print(f"{CONFIG_FILE} not found")
     raise
 except yaml.YAMLError as e:
     logging.error(f"Error parsing {CONFIG_FILE}: {e}")
-    print(f"Error parsing {CONFIG_FILE}")
     raise
 
 # Loading EndPoint File
@@ -39,19 +35,25 @@ try:
         ENDPOINTS = yaml.safe_load(f)
 except FileNotFoundError:
     logging.error(f"{ENDPOINT_FILE} not found")
-    print(f"{ENDPOINT_FILE} not found")
     raise
 except yaml.YAMLError as e:
     logging.error(f"Error parsing {ENDPOINT_FILE}: {e}")
-    print(f"Error parsing {ENDPOINT_FILE}")
     raise
 
 load_dotenv()
 APPLIST_CACHE_FILE = 'applist.json'
+# 1. Create a unique, timestamped log file name for each run.
+log_filename = f"scraper_log_{dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+
+# 2. Configure logging to output to BOTH the console and the new log file.
 logging.basicConfig(
     level=logging.INFO,
     format='[%(levelname).1s %(asctime)s] %(message)s',
-    datefmt='%h:%M:%S'
+    datefmt='%H:%M:%S',
+    handlers=[
+        logging.FileHandler(log_filename),      # Sends log messages to the file.
+        logging.StreamHandler(sys.stdout)       # Sends log messages to the console.
+    ]
 )
 
 class SteamAPI:
@@ -86,6 +88,8 @@ class SteamAPI:
     def get_app_details(self, appid: str) -> Optional[dict]:
         params = {"appids": appid, "cc": self.config['currency'], "l":self.config['language']}
         data = self._do_requests(f"{ENDPOINTS['STEAM']['GET_APP_DETAILS']}", params)
+        if not data:
+            return None
         return data[appid]['data'] if data[appid]['success'] else None
 
     def get_steamspy_details(self, appid: str) -> Optional[dict]:
@@ -93,18 +97,24 @@ class SteamAPI:
         return data if data and data.get('developer') else None
 
     def get_achievements(self, appid: str) -> list:
-        schema_data = self._do_requests(ENDPOINTS['STEAM']['GET_SCHEMA_FOR_GAME'], params={'appid': appid, 'l': self.config['language']})
+        schema_data = self._do_requests(
+            ENDPOINTS['STEAM']['GET_SCHEMA_FOR_GAME'],
+            params={'key': os.getenv('STEAM_API_KEY'), 'appid': appid, 'l': self.config['language']})
         if not schema_data or 'game' not in schema_data or 'availableGameStats' not in schema_data['game']: return []
         achievements = schema_data['game']['availableGameStats'].get('achievements', [])
         if not achievements: return []
-        percent_data = self._do_requests("http://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/", params={'gameid': appid})
-        percentages = {item['name']: item['percent'] for item in percent_data.get('achievementpercentages', {}).get('achievements', [])} if percent_data else {}
-        return [{"app_id": int(appid), "api_name": a['name'], "display_name": a.get('displayName'), "description": a.get('description'), "global_completion_rate": round(percentages.get(a['name'], 0.0), 4)} for a in achievements]
+        percent_data = self._do_requests("http://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/",
+            params={'gameid': appid})
+        percentages = {item['name']: item['percent']
+            for item in percent_data.get('achievementpercentages', {}).get('achievements', [])} if percent_data else {}
+        return [{"app_id": int(appid), "api_name": a['name'],
+            "display_name": a.get('displayName'), "description": a.get('description'),
+            "global_completion_rate": round(float(percentages.get(a['name'], 0.0)), 4)} for a in achievements]
 
 
     def get_reviews(self, appid: str) -> list:
         params = {'json': 1, 'num_per_page': 20,
-            'language': 'English', 'filter_offtopic_activity': True,
+            'language': 'english', 'filter_offtopic_activity': True,
             'filter_user_generated_content': True}
         data = self._do_requests(ENDPOINTS['STEAM']['GET_USER_REVIEW'] + f"{appid}", params)
         reviews = data["reviews"] if data["reviews"] and data.get('success') == 1 else []
@@ -163,7 +173,7 @@ class DatabaseManager:
     """
     Creates all data
     """
-    def __init__(self, schema_yaml_path: str = "schema.yaml"):
+    def __init__(self, drop_table: bool = False, schema_yaml_path: str = "schema.yaml"):
         self.schema = self._load_schema(schema_yaml_path)
         load_dotenv()
         try:
@@ -176,6 +186,9 @@ class DatabaseManager:
                 cursorclass=pymysql.cursors.DictCursor
             )
             self.cursor = self.connection.cursor()
+            if drop_table:
+                self._drop_all_tables()
+            self._creates_tables()
         except pymysql.Error as e:
             logging.error(f"Database connection failed: {e}")
             sys.exit(1)
@@ -187,36 +200,59 @@ class DatabaseManager:
                     schema = yaml.safe_load(file)
                 return schema
             except yaml.YAMLError as e:
-                print("Error Parsing YAML: ", e)
+                logging.error("Error Parsing YAML: ", e)
                 raise
             except FileNotFoundError:
-                print("File Not Found at: ", schema_yaml_path)
+                logging.error("File Not Found at: ", schema_yaml_path)
                 raise
         else:
-            print("No schema file provided")
+            logging.error("No schema file provided")
             raise
+
+    def _drop_all_tables(self):
+        """
+        Drops all application tables from the database in the correct order.
+        This is a destructive operation and should be used with caution.
+        """
+        try:
+            # Temporarily disable foreign key checks to ensure a smooth drop process.
+            self.cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+            logging.warning("Attempting to drop all scraper tables...")
+
+            # Iterate through the drop_order list from the schema.yaml file.
+            for table_name in self.schema['drop_order']:
+                logging.info(f"Dropping table: {table_name}...")
+                self.cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
+
+            logging.info("All tables dropped successfully.")
+        except pymysql.Error as err:
+            logging.error(f"An error occurred while dropping tables: {err}")
+        finally:
+            # Always re-enable foreign key checks.
+            self.cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+            self.connection.commit()
 
     def _creates_tables(self):
         for table_name in self.schema['create_order']:
             try:
                 self.cursor.execute(self.schema['tables'][table_name])
             except pymysql.Error as e:
-                print("Can't Create Table: ", table_name, e)
+                logging.error(f"An error occurred while creating table {table_name}: {e}")
                 raise
             except Exception as e:
-                print("Unexpected Error: ", e)
+                logging.error(f"An unexpected error occurred while creating table {table_name}: {e}")
                 raise
         self.connection.commit()
 
     def is_processed(self, app_id: int) -> bool:
         try:
-            self.cursor.execute(self.schema['queries']['scrap_status']['is_processed'], (app_id, ))
+            self.cursor.execute(self.schema['queries']['scrape_status']['is_processed'], (app_id, ))
             return self.cursor.fetchone() is not None
         except pymysql.Error as e:
-            print("Can't Check Processing Status: ", e)
+            logging.error(f"An error occurred while checking processing status for app_id {app_id}: {e}")
             raise
         except Exception as e:
-            print("Unexpected Error: ", e)
+            logging.error(f"An unexpected error occurred while checking processing status for app_id {app_id}: {e}")
             raise
 
     def get_processed_count(self) -> int:
@@ -225,7 +261,7 @@ class DatabaseManager:
         return result['count'] if result else 0
 
     def mark_as_processed(self, appid: int, status: str):
-        self.cursor.execute(self.schema['queries']['scrap_status']['mark_as_processed'], (appid, status))
+        self.cursor.execute(self.schema['queries']['scrape_status']['mark_processed'], (appid, status))
 
     def _get_or_create_id(self, table: str, name: str) -> int:
         sql_insert = self.schema['queries']['lookup_tables']['insert_ignore'].format(table=table)
@@ -235,33 +271,64 @@ class DatabaseManager:
         result = self.cursor.fetchone()
         return result['id'] if result else -1
 
-    def add_app_and_relations(self, parsed_data: dict):
-        self.cursor.execute(self.schema['queries']['apps']['insert'], parsed_data)
-        app_id = parsed_data['main']['id']
-        for item_type in ['developers', 'publishers', 'genres', 'categories']:
-            sql_link = self.schema['queries']['junction_tables']['insert_ignore'].format(table = f'app_{item_type}')
+    def add_pending_dlc_link(self, dlc_id: int, base_game_id: int):
+        logging.info(f"Adding pending DLC link for DLC ID {dlc_id} and base game ID {base_game_id}")
+        sql = self.schema['queries']['junction_tables']['add_pending_dlc_link']
+        self.cursor.execute(sql, (dlc_id, base_game_id))
+
+    def resolve_pending_dlc_links(self):
+        logging.info("Attempting to resolve pending DLC links")
+        try:
+            sql_resolve = self.schema['queries']['utility_queries']['resolve_pending_dlc_links']
+            self.cursor.execute(sql_resolve)
+            resolved_count = self.cursor.rowcount
+            if resolved_count > 0:
+                logging.info(f"Resolved {resolved_count} pending DLC links")
+            else:
+                logging.info("No pending DLC links to resolve")
+            sql_clear = self.schema['queries']['utilities_queries']['clear_resolved_dlc_links']
+            self.cursor.execute(sql_clear)
+            self.connection.commit()
+        except Exception as e:
+            logging.error(f"Failed to resolve pending DLC links: {e}")
+
+    def add_app_and_relations(self, parsed_data: Dict[str, Any]):
+        """Inserts/updates an app in the master `apps` table, then links all its related data."""
+        # --- THIS IS THE CRUCIAL FIX ---
+        # We now pass the 'main_tuple' to the execute command, which matches the '%s' placeholders.
+        self.cursor.execute(self.schema['queries']['apps']['insert_update'], parsed_data['main_tuple'])
+
+        # The app's ID is the first item in the tuple.
+        app_id = parsed_data['main_tuple'][0]
+
+        # The rest of the logic for linking related data remains the same.
+        for item_type in ['developers', 'publishers', 'categories', 'genres']:
+            sql_link = self.schema['queries']['junction_tables']['insert_ignore'].format(table=f'app_{item_type}')
             for name in parsed_data.get(item_type, []):
-                item_id = self._get_or_create_id(f'{item_type}s', name)
-                if item_id != 1: self.cursor.execute(sql_link, (app_id, item_id))
+                item_id = self._get_or_create_id(item_type, name)
+                if item_id != -1: self.cursor.execute(sql_link, (app_id, item_id))
+
         sql_link_lang = self.schema['queries']['junction_tables']['insert_language']
         for lang_name in parsed_data.get('supported_languages', []):
-            is_audio = lang_name in parsed_data.get('full_audio_languages', [])
+            is_audio = lang_name in parsed_data['main_dict'].get('full_audio_languages', [])
             lang_id = self._get_or_create_id('languages', lang_name)
-            if lang_id != 1:
-                self.cursor.execute(sql_link_lang, (app_id, lang_id, is_audio))
+            if lang_id != -1: self.cursor.execute(sql_link_lang, (app_id, lang_id, is_audio))
+
         sql_link_tag = self.schema['queries']['junction_tables']['insert_tag']
-        for tag_name, tag_value in parsed_data.get('tags', {}).items():
+        if isinstance(parsed_data.get('tags', {}), list):
+            print(parsed_data.get('tags', {}))
+        for tag_name, tag_value in ({} if isinstance(parsed_data.get('tags', {}), list) else parsed_data.get('tags', {})).items():
             tag_id = self._get_or_create_id('tags', tag_name)
-            if tag_id != 1:
-                self.cursor.execute(sql_link_tag, (app_id, tag_id, tag_value))
+            if tag_id != -1: self.cursor.execute(sql_link_tag, (app_id, tag_id, tag_value))
 
     def add_achievements(self, achievements: list):
         if not achievements: return
         sql = self.schema['queries']['achievements']['insert_update']
-        data = [(a['app_id'], a['api_name'], a['display_name'], a['description'], a['global_completion_rate']) for a in achievements]
+        data = [(a['app_id'], a['api_name'], a['display_name'],
+            a['description'], a['global_completion_rate']) for a in achievements]
         self.cursor.executemany(sql, data)
 
-    def add_reviews(self, reviews: list):
+    def add_reviews(self, reviews: list, app_id: str):
         if not reviews: return
         sql_insert_review = self.schema['queries']['reviews']['insert_update']
         sql_link_review = self.schema['queries']['junction_tables']['insert_review_link']
@@ -273,7 +340,7 @@ class DatabaseManager:
                 SteamScraperApplication.sanitize_text(r.get('review')), r.get('voted_up'),
                 r.get('votes_up'), r.get('votes_funny'), dt.datetime.fromtimestamp(r.get('timestamp_created'))
             ))
-            link_tuples.append((r['app_id'], r['recommendationid']))
+            link_tuples.append((app_id, r['recommendationid']))
         if review_tuples:
             self.cursor.executemany(sql_insert_review, review_tuples)
         if link_tuples:
@@ -294,8 +361,8 @@ class DatabaseManager:
             logging.info("Database connection closed")
 
 class SteamScraperApplication:
-    def __init__(self):
-        self.db = DatabaseManager()
+    def __init__(self, drop_tables: bool = False):
+        self.db = DatabaseManager(drop_tables)
         self.steam_api = SteamAPI(CONFIG['steam_api'], CONFIG['scraper_settings'])
         self.igdb_api = IGDB_API(CONFIG['scraper_settings'])
 
@@ -305,7 +372,9 @@ class SteamScraperApplication:
             'host': CONFIG['db_host'],
             'user': CONFIG['db_user'],
             'password': CONFIG['db_password'],
-            'database': CONFIG['db_name']
+            'database': CONFIG['db_name'],
+            'cursorclass': pymysql.cursors.DictCursor,
+            'charset': 'utf8mb4'  # <-- ADD THIS LINE
         }
         igdb_creds = {
             'client_id': CONFIG['igdb_client_id'],
@@ -351,21 +420,24 @@ class SteamScraperApplication:
                 app_type = app_details.get('type')
                 if app_type not in ['game', 'dlc']:
                     self.db.mark_as_processed(appid, f"skipped type: {app_type}")
+                    continue
 
                 use_steamspy = CONFIG['scraper_settings']['use_steamspy']
                 spy_details = self.steam_api.get_steamspy_details(appid_str) if use_steamspy and app_type == 'game' else None
                 parsed_data = self._parse_app_data(app_details, spy_details)
 
+                if parsed_data.get('base_game_id'):
+                   self.db.add_pending_dlc_link(appid, parsed_data['base_game_id'])
                 self.db.add_app_and_relations(parsed_data)
 
                 if app_type == "game":
-                    game_name = parsed_data['name']
+                    game_name = parsed_data['main_dict']['name']
                     if game_name:
                         time_data = self.igdb_api.fetch_time_to_beat_by_name(game_name)
                         if time_data: self.db.update_time_to_beat(appid, time_data)
-                    if parsed_data['main']['achievements_count'] > 0:
+                    if parsed_data['main_dict']['achievements_count'] > 0:
                         self.db.add_achievements(self.steam_api.get_achievements(appid_str))
-                self.db.add_reviews(self.steam_api.get_reviews(appid_str))
+                self.db.add_reviews(self.steam_api.get_reviews(appid_str), appid_str)
 
                 self.db.mark_as_processed(appid, 'success'); self.db.commit()
                 newly_processed_count += 1
@@ -373,6 +445,8 @@ class SteamScraperApplication:
         except (KeyboardInterrupt, SystemExit): print("\n"); logging.warning("Shutdown signal received...")
         except Exception: print("\n"); logging.error(f"An unexpected error occurred: {traceback.format_exc()}")
         finally:
+
+            self.db.resolve_pending_dlc_links()
             self.show_progress_bar('Finished', total_apps, total_apps, newly_processed_count)
             print("\n"); logging.info(f"Scrape session concluded. Processed {newly_processed_count} new apps.")
             self.db.close()
@@ -393,7 +467,8 @@ class SteamScraperApplication:
             'short_description': SteamScraperApplication.sanitize_text(app_details.get('short_description')),
             'reviews_summary': SteamScraperApplication.sanitize_text(app_details.get('reviews'))
         }
-        if 'price_overview' in app_details: main_data['price'] = self.price_to_float(app_details['price_overview'].get('final_formatted', ''))
+        if 'price_overview' in app_details: main_data['price'] = self.price_to_float(
+            app_details['price_overview'].get('final_formatted', ''))
         if 'recommendations' in app_details: main_data['recommendations'] = app_details['recommendations'].get('total', 0)
         if 'metacritic' in app_details:
             main_data['metacritic_score'] = app_details['metacritic'].get('score', 0)
@@ -417,20 +492,36 @@ class SteamScraperApplication:
                     'user_score': spy_details.get('userscore', 0), 'score_rank': spy_details.get('score_rank', '')
                 })
 
-            supported_languages, full_audio_languages = [], []
-            langs = [lang.strip() for lang in SteamScraperApplication.sanitize_text(app_details['supported_languages']).split(',') if lang.strip()]
-            for lang in langs:
-                clean_lang = lang.replace('*', '').strip()
-                if clean_lang:
-                    supported_languages.append(clean_lang)
-                    if lang.endswith('*'): full_audio_languages.append(clean_lang)
-            return {
-                        'main': main_data, 'developers': app_details.get('developers', []), 'publishers': app_details.get('publishers', []),
-                        'categories': [c['description'] for c in app_details.get('categories', [])],
-                        'genres': [g['description'] for g in app_details.get('genres', [])],
-                        'supported_languages': supported_languages, 'full_audio_languages': full_audio_languages,
-                        'tags': spy_details.get('tags', {}) if spy_details else {}
-                    }
+        supported_languages, full_audio_languages = [], []
+        langs = [lang.strip()
+            for lang in SteamScraperApplication.sanitize_text(
+                app_details.get("supported_languages", "")).split(',') if lang.strip()]
+        for lang in langs:
+            clean_lang = lang.replace('*', '').strip()
+            if clean_lang:
+                supported_languages.append(clean_lang)
+                if lang.endswith('*'): full_audio_languages.append(clean_lang)
+        main_data_tuple = (
+                    main_data['id'], main_data['type'], main_data['name'],
+                    main_data['release_date'], main_data['price'], main_data['positive_reviews'],
+                    main_data['negative_reviews'], main_data['recommendations'], main_data['peak_ccu'],
+                    main_data['metacritic_score'], main_data['metacritic_url'], main_data['required_age'],
+                    main_data['achievements_count'], main_data['supports_windows'], main_data['supports_mac'],
+                    main_data['supports_linux'], main_data['header_image_url'], main_data['estimated_owners'],
+                    main_data['user_score'], main_data['score_rank'], main_data['about_the_game'],
+                    main_data['detailed_description'], main_data['short_description'], main_data['reviews_summary']
+                )
+
+        return {
+            'main_tuple': main_data_tuple,  # Use this tuple for the main INSERT operation.
+            'main_dict': main_data,       # Keep the dict for easy access to values by name (like 'name' for IGDB).
+            'base_game_id': app_details.get('fullgame', {}).get('appid'),
+            'developers': app_details.get('developers', []), 'publishers': app_details.get('publishers', []),
+            'categories': [c['description'] for c in app_details.get('categories', [])],
+            'genres': [g['description'] for g in app_details.get('genres', [])],
+            'supported_languages': supported_languages, 'full_audio_languages': full_audio_languages,
+            'tags': spy_details.get('tags', {}) if spy_details else {}
+        }
     @staticmethod
     def sanitize_text(text: Optional[str]) -> str:
         if not text:
@@ -470,6 +561,6 @@ class SteamScraperApplication:
             return 0.0
 
 if __name__ == '__main__':
-    scraper = SteamScraperApplication()
+    scraper = SteamScraperApplication(False)
     scraper.run()
     logging.info("Done")

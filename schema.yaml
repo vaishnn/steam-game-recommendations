@@ -4,6 +4,26 @@
 #   - Created a new 'app_review_link' junction table to link apps and reviews.
 #   - This further normalizes the schema and is a cleaner design.
 
+drop_order:
+  - pending_dlc_links
+  - scrape_status
+  - app_tags
+  - app_supported_languages
+  - app_categories
+  - app_genres
+  - app_publishers
+  - app_developers
+  - app_reviews
+  - reviews
+  - achievements
+  - apps
+  - tags
+  - languages
+  - genres
+  - categories
+  - publishers
+  - developers
+
 create_order:
   - developers
   - publishers
@@ -22,6 +42,7 @@ create_order:
   - app_supported_languages
   - app_tags
   - scrape_status
+  - pending_dlc_links
 
 tables:
   # ... (apps, developers, publishers, etc., are unchanged)
@@ -53,7 +74,7 @@ tables:
       review_date DATETIME,
       review_source VARCHAR(100) DEFAULT 'Steam'
     );
-  app_review_link: |
+  app_reviews: |
     CREATE TABLE IF NOT EXISTS app_review_link (
       app_id INT NOT NULL,
       review_id BIGINT NOT NULL,
@@ -76,17 +97,49 @@ tables:
     CREATE TABLE IF NOT EXISTS app_tags ( app_id INT NOT NULL, tag_id INT NOT NULL, tag_value INT, PRIMARY KEY (app_id, tag_id), FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE, FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE );
   scrape_status: |
     CREATE TABLE IF NOT EXISTS scrape_status ( appid INT PRIMARY KEY, status VARCHAR(50), timestamp DATETIME DEFAULT CURRENT_TIMESTAMP );
-
+  pending_dlc_links: |
+    CREATE TABLE IF NOT EXISTS pending_dlc_links (
+      dlc_id INT PRIMARY KEY,
+      base_game_id INT NOT NULL,
+      INDEX (base_game_id)
+    );
 queries:
-  # ... (apps query is unchanged) ...
   apps:
     insert_update: |
-      INSERT INTO apps ( id, type, name, base_game_id, release_date, price, positive_reviews, negative_reviews, recommendations, peak_ccu, metacritic_score, metacritic_url, required_age, achievements_count, supports_windows, supports_mac, supports_linux, header_image_url, estimated_owners, user_score, score_rank, about_the_game, detailed_description, short_description, reviews_summary ) VALUES ( %(id)s, %(type)s, %(name)s, %(base_game_id)s, %(release_date)s, %(price)s, %(positive_reviews)s, %(negative_reviews)s, %(recommendations)s, %(peak_ccu)s, %(metacritic_score)s, %(metacritic_url)s, %(required_age)s, %(achievements_count)s, %(supports_windows)s, %(supports_mac)s, %(supports_linux)s, %(header_image_url)s, %(estimated_owners)s, %(user_score)s, %(score_rank)s, %(about_the_game)s, %(detailed_description)s, %(short_description)s, %(reviews_summary)s ) ON DUPLICATE KEY UPDATE type=VALUES(type), name=VALUES(name), base_game_id=VALUES(base_game_id), release_date=VALUES(release_date), price=VALUES(price), positive_reviews=VALUES(positive_reviews), negative_reviews=VALUES(negative_reviews), recommendations=VALUES(recommendations), peak_ccu=VALUES(peak_ccu), metacritic_score=VALUES(metacritic_score), metacritic_url=VALUES(metacritic_url), required_age=VALUES(required_age), achievements_count=VALUES(achievements_count), supports_windows=VALUES(supports_windows), supports_mac=VALUES(supports_mac), supports_linux=VALUES(supports_linux), header_image_url=VALUES(header_image_url), estimated_owners=VALUES(estimated_owners), user_score=VALUES(user_score), score_rank=VALUES(score_rank), about_the_game=VALUES(about_the_game), detailed_description=VALUES(detailed_description), short_description=VALUES(short_description), reviews_summary=VALUES(reviews_summary)
+      INSERT INTO apps (
+          id, type, name, release_date, price, positive_reviews, negative_reviews,
+          recommendations, peak_ccu, metacritic_score, metacritic_url, required_age,
+          achievements_count, supports_windows, supports_mac, supports_linux,
+          header_image_url, estimated_owners, user_score, score_rank, about_the_game,
+          detailed_description, short_description, reviews_summary
+      ) VALUES (
+          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+      )
+      ON DUPLICATE KEY UPDATE
+          type=VALUES(type), name=VALUES(name), base_game_id=VALUES(base_game_id), release_date=VALUES(release_date), price=VALUES(price),
+          positive_reviews=VALUES(positive_reviews), negative_reviews=VALUES(negative_reviews),
+          recommendations=VALUES(recommendations), peak_ccu=VALUES(peak_ccu),
+          metacritic_score=VALUES(metacritic_score), metacritic_url=VALUES(metacritic_url),
+          required_age=VALUES(required_age), achievements_count=VALUES(achievements_count),
+          supports_windows=VALUES(supports_windows), supports_mac=VALUES(supports_mac),
+          supports_linux=VALUES(supports_linux), header_image_url=VALUES(header_image_url),
+          estimated_owners=VALUES(estimated_owners), user_score=VALUES(user_score),
+          score_rank=VALUES(score_rank), about_the_game=VALUES(about_the_game),
+          detailed_description=VALUES(detailed_description), short_description=VALUES(short_description),
+          reviews_summary=VALUES(reviews_summary)
+    update_base_game_id: |
+      UPDATE apps SET base_game_id = %s WHERE id = %s
     update_time_to_beat: |
-      UPDATE apps SET time_to_beat_main = %s, time_to_beat_extras = %s, time_to_beat_completionist = %s WHERE id = %s
+      UPDATE apps SET
+        time_to_beat_main = %s, time_to_beat_extras = %s, time_to_beat_completionist = %s
+      WHERE id = %s
   achievements:
     insert_update: |
-      INSERT INTO achievements (app_id, api_name, display_name, description, global_completion_rate) VALUES (%s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), description=VALUES(description), global_completion_rate=VALUES(global_completion_rate)
+      INSERT INTO achievements (app_id, api_name, display_name, description, global_completion_rate)
+      VALUES (%s, %s, %s, %s, %s)
+      ON DUPLICATE KEY UPDATE
+          display_name=VALUES(display_name), description=VALUES(description),
+          global_completion_rate=VALUES(global_completion_rate)
   reviews:
     insert_update: |
       INSERT INTO reviews (review_id, author_steamid, language, review_text, is_recommended, votes_helpful, votes_funny, review_date)
@@ -98,10 +151,11 @@ queries:
     is_processed: "SELECT 1 FROM scrape_status WHERE appid = %s"
     mark_processed: "INSERT INTO scrape_status (appid, status) VALUES (%s, %s) ON DUPLICATE KEY UPDATE status=VALUES(status), timestamp=CURRENT_TIMESTAMP"
   lookup_tables:
-    insert_ignore: "INSERT IGNORE INTO {table} VALUES (%s)"
-    select_id: "SELECT id FROM {table} WHERE name = (%s)"
+    insert_ignore: "INSERT IGNORE INTO {table} (name) VALUES (%s)"
+    select_id: "SELECT id FROM {table} WHERE name = %s"
   junction_tables:
     insert_ignore: "INSERT IGNORE INTO {table} VALUES (%s, %s)"
     insert_language: "INSERT INTO app_supported_languages (app_id, language_id, is_full_audio) VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE is_full_audio=VALUES(is_full_audio)"
     insert_tag: "INSERT IGNORE INTO app_tags (app_id, tag_id, tag_value) VALUES (%s, %s, %s)"
     insert_review_link: "INSERT IGNORE INTO app_review_link (app_id, review_id) VALUES (%s, %s)"
+    add_pending_dlc_link: "INSERT IGNORE INTO pending_dlc_links (dlc_id, base_game_id) VALUES (%s, %s)"

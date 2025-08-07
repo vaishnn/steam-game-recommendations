@@ -3,7 +3,7 @@
 scraper_settings:
   sleep: 1.5
   timeout: 20
-  use_steamspy: true
+  use_steamspy: True
 
 steam_api:
   currency: "us"
