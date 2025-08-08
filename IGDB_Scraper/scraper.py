@@ -391,15 +391,10 @@ class SteamScraperApplication:
         # self.igdb_api = IGDB_API(CONFIG['scraper_settings'])
 
     def _load_and_validate_credentials(self):
-        logging.info("Loading Credentials from .env file")
-        db_creds = {
-            'host': CONFIG['DB_HOST'],
-            'user': CONFIG['DB_USER'],
-            'password': CONFIG['DB_PASSWORD'],
-            'database': CONFIG['DB_NAME'],
-            'cursorclass': pymysql.cursors.DictCursor,
-            'charset': 'utf8mb4'  # <-- ADD THIS LINE
-        }
+        logging.info("Loading credentials from .env file...")
+        db_vars = {'host': 'DB_HOST', 'user': 'DB_USER', 'password': 'DB_PASSWORD', 'database': 'DB_NAME'}
+        db_creds = {key: os.getenv(env_var) for key, env_var in db_vars.items()}
+
         steam_api_key = os.getenv('STEAM_API_KEY')
 
         all_creds = {**db_creds, 'steam_api_key': steam_api_key}
@@ -408,7 +403,7 @@ class SteamScraperApplication:
                 logging.error(f"FATAL: Required credential for '{key.upper()}' not set in your .env file.")
                 sys.exit(1)
 
-        logging.info("Credentials loaded successfully")
+        logging.info("Credentials loaded successfully.")
         return db_creds, steam_api_key
 
     def run(self):
