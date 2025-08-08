@@ -11,39 +11,58 @@ from random import shuffle
 import pymysql
 import datetime as dt
 import logging
+import argparse
+import shutil
 import yaml
 from dotenv import load_dotenv
 from typing import Dict, Any, Optional, List
 
 CONFIG_FILE = 'config.yaml'
 ENDPOINT_FILE = 'end_points.yaml'
-
+CONFIG = {}
+ENDPOINTS = {}
 # Loading Config File
-try:
-    with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-        CONFIG = yaml.safe_load(f)
-except FileNotFoundError:
-    logging.error(f"{CONFIG_FILE} not found")
-    raise
-except yaml.YAMLError as e:
-    logging.error(f"Error parsing {CONFIG_FILE}: {e}")
-    raise
+def load_config_file():
+    try:
+
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            global CONFIG
+            CONFIG = yaml.safe_load(f)
+    except FileNotFoundError:
+        logging.error(f"{CONFIG_FILE} not found")
+        raise
+    except yaml.YAMLError as e:
+        logging.error(f"Error parsing {CONFIG_FILE}: {e}")
+        raise
 
 # Loading EndPoint File
-try:
-    with open(ENDPOINT_FILE, 'r', encoding='utf-8') as f:
-        ENDPOINTS = yaml.safe_load(f)
-except FileNotFoundError:
-    logging.error(f"{ENDPOINT_FILE} not found")
-    raise
-except yaml.YAMLError as e:
-    logging.error(f"Error parsing {ENDPOINT_FILE}: {e}")
-    raise
+def load_endpoints_file():
+    try:
+        with open(ENDPOINT_FILE, 'r', encoding='utf-8') as f:
+            global ENDPOINTS
+            ENDPOINTS = yaml.safe_load(f)
+    except FileNotFoundError:
+        logging.error(f"{ENDPOINT_FILE} not found")
+        raise
+    except yaml.YAMLError as e:
+        logging.error(f"Error parsing {ENDPOINT_FILE}: {e}")
+        raise
+
+def manage_log_files():
+    log_dir = ".old_logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+        logging.info(f"Created log directory: {log_dir}")
+    for filename in os.listdir('.'):
+        if filename.startswith("scraper_log_") and filename.endswith(".log"):
+            shutil.move(filename, os.path.join(log_dir, filename))
+            logging.info(f"Archived old log files: {filename}")
+    return f"scraper_log_{dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
 
 load_dotenv()
 APPLIST_CACHE_FILE = 'applist.json'
 # 1. Create a unique, timestamped log file name for each run.
-log_filename = f"scraper_log_{dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
+log_filename = manage_log_files()
 
 # 2. Configure logging to output to BOTH the console and the new log file.
 logging.basicConfig(
@@ -104,7 +123,7 @@ class SteamAPI:
             params={'key': os.getenv('STEAM_API_KEY'), 'appid': appid, 'l': self.config['language']})
         if not schema_data or 'game' not in schema_data or 'availableGameStats' not in schema_data['game']: return []
         achievements = schema_data['game']['availableGameStats'].get('achievements', [])
-        if not achievements: return []
+        if achievements == []: return []
         percent_data = self._do_requests("http://api.steampowered.com/ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/",
             params={'gameid': appid})
         percentages = {item['name']: item['percent']
@@ -119,6 +138,8 @@ class SteamAPI:
             'language': 'english', 'filter_offtopic_activity': True,
             'filter_user_generated_content': True}
         data = self._do_requests(ENDPOINTS['STEAM']['GET_USER_REVIEW'] + f"{appid}", params)
+        if data.get("reviews", []) == []:
+            return []
         reviews = data["reviews"] if data["reviews"] and data.get('success') == 1 else []
         rev = []
         for r in reviews:
@@ -175,7 +196,7 @@ class DatabaseManager:
     """
     Creates all data
     """
-    def __init__(self, drop_table: bool = False, schema_yaml_path: str = "schema.yaml"):
+    def __init__(self, schema_yaml_path: str = "schema.yaml"):
         self.schema = self._load_schema(schema_yaml_path)
         load_dotenv()
         try:
@@ -188,8 +209,6 @@ class DatabaseManager:
                 cursorclass=pymysql.cursors.DictCursor
             )
             self.cursor = self.connection.cursor()
-            if drop_table:
-                self._drop_all_tables()
             self._creates_tables()
         except pymysql.Error as e:
             logging.error(f"Database connection failed: {e}")
@@ -211,21 +230,24 @@ class DatabaseManager:
             logging.error("No schema file provided")
             raise
 
+    def get_all_processed_app_ids(self) -> set:
+        logging.info("Fetching all processed app IDs...")
+        self.cursor.execute(self.schema['scrape_status']['all_prcoessed'])
+        processed_ids = {row['appid'] for row in self.cursor.fetchall()}
+        logging.info(f"Found {len(processed_ids)} processed app IDs")
+        return processed_ids
+
     def _drop_all_tables(self):
         """
         Drops all application tables from the database in the correct order.
         This is a destructive operation and should be used with caution.
         """
         try:
-            # Temporarily disable foreign key checks to ensure a smooth drop process.
             self.cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
             logging.warning("Attempting to drop all scraper tables...")
-
-            # Iterate through the drop_order list from the schema.yaml file.
             for table_name in self.schema['drop_order']:
                 logging.info(f"Dropping table: {table_name}...")
                 self.cursor.execute(f"DROP TABLE IF EXISTS {table_name};")
-
             logging.info("All tables dropped successfully.")
         except pymysql.Error as err:
             logging.error(f"An error occurred while dropping tables: {err}")
@@ -281,14 +303,14 @@ class DatabaseManager:
     def resolve_pending_dlc_links(self):
         logging.info("Attempting to resolve pending DLC links")
         try:
-            sql_resolve = self.schema['queries']['utility_queries']['resolve_pending_dlc_links']
+            sql_resolve = self.schema['queries']['utility_queries']['resolve_dlc_links']
             self.cursor.execute(sql_resolve)
             resolved_count = self.cursor.rowcount
             if resolved_count > 0:
                 logging.info(f"Resolved {resolved_count} pending DLC links")
             else:
                 logging.info("No pending DLC links to resolve")
-            sql_clear = self.schema['queries']['utilities_queries']['clear_resolved_dlc_links']
+            sql_clear = self.schema['queries']['utility_queries']['clear_resolved_dlc_links']
             self.cursor.execute(sql_clear)
             self.connection.commit()
         except Exception as e:
@@ -363,9 +385,11 @@ class DatabaseManager:
             logging.info("Database connection closed")
 
 class SteamScraperApplication:
-    def __init__(self, drop_tables: bool = False):
-        self.db = DatabaseManager(drop_tables)
+    def __init__(self):
+        self.args = self._setup_arg_parser()
+        self.db = DatabaseManager()
         self.steam_api = SteamAPI(CONFIG['steam_api'], CONFIG['scraper_settings'])
+
         # self.igdb_api = IGDB_API(CONFIG['scraper_settings'])
 
     def _load_and_validate_credentials(self):
@@ -396,6 +420,7 @@ class SteamScraperApplication:
 
         total_apps = len(app_ids)
         processed_in_db = self.db.get_processed_count()
+        processed_id_set = self.db.get_all_processed_app_ids()
         logging.info(f"Found {total_apps} total apps on steam.")
         logging.info(f"Resuming progress. Found {processed_in_db} apps in database.")
         shuffle(app_ids)
@@ -404,6 +429,9 @@ class SteamScraperApplication:
         try:
             for i, appid_str in enumerate(app_ids):
                 appid = int(appid_str)
+                if appid in processed_id_set:
+                    self.show_progress_bar('Scraping', i + 1, total_apps, newly_processed_count)
+                    continue
                 self.show_progress_bar('Scraping', i + 1, total_apps, newly_processed_count)
                 if self.db.is_processed(appid):
                     sys.stdout.write('.');
@@ -452,6 +480,15 @@ class SteamScraperApplication:
             self.show_progress_bar('Finished', total_apps, total_apps, newly_processed_count)
             print("\n"); logging.info(f"Scrape session concluded. Processed {newly_processed_count} new apps.")
             self.db.close()
+
+    def _setup_arg_parser(self) -> argparse.Namespace:
+        parser = argparse.ArgumentParser(description=f'Steam Scraper {__version__}',
+            formatter_class=argparse.RawTextHelpFormatter)
+        parser.add_argument('--drop-tables', action='store_true',
+            help='Drop all scraper tables from the database and exit.')
+        parser.add_argument('--pre-filter', action='store_true',
+            help='Pre-filter which are already processed')
+        return parser.parse_args()
 
     def _parse_app_data(self, app_details: dict, spy_details: Optional[dict]) -> dict:
         appid = app_details['steam_appid']
@@ -563,6 +600,15 @@ class SteamScraperApplication:
             return 0.0
 
 if __name__ == '__main__':
-    scraper = SteamScraperApplication(True)
+    load_endpoints_file()
+    load_config_file()
+    scraper = SteamScraperApplication()
+
+    if scraper.args.drop_tables:
+        confirm = input("Are you sure you want to drop all scraper tables? This cannot be undone. (yes/no): ")
+        if confirm.lower() == 'yes':
+            scraper.db._drop_all_tables()
+        else:
+            print("Operation cancelled.")
     scraper.run()
     logging.info("Done")

@@ -117,6 +117,7 @@ queries:
       INSERT INTO reviews (review_id, author_steamid, language, review_text, is_recommended, votes_helpful, votes_funny, review_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE review_text=VALUES(review_text), is_recommended=VALUES(is_recommended), votes_helpful=VALUES(votes_helpful), votes_funny=VALUES(votes_funny)
   scrape_status:
     is_processed: "SELECT 1 FROM scrape_status WHERE appid = %s"
+    all_prcoessed: "SELECT appid FROM scrape_status"
     mark_processed: "INSERT INTO scrape_status (appid, status) VALUES (%s, %s) ON DUPLICATE KEY UPDATE status=VALUES(status), timestamp=CURRENT_TIMESTAMP"
   lookup_tables:
     insert_ignore: "INSERT IGNORE INTO {table} (name) VALUES (%s)"
@@ -125,7 +126,7 @@ queries:
     insert_ignore: "INSERT IGNORE INTO {table} VALUES (%s, %s)"
     insert_language: "INSERT INTO app_supported_languages (app_id, language_id, is_full_audio) VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE is_full_audio=VALUES(is_full_audio)"
     insert_tag: "INSERT IGNORE INTO app_tags (app_id, tag_id, tag_value) VALUES (%s, %s, %s)"
-    insert_review: "INSERT IGNORE INTO app_reviews (app_id, review_id) VALUES (%s, %s)"
+    insert_reviews: "INSERT IGNORE INTO app_reviews (app_id, review_id) VALUES (%s, %s)"
     add_pending_dlc_link: "INSERT IGNORE INTO pending_dlc_links (dlc_id, base_game_id) VALUES (%s, %s)"
   utility_queries:
     resolve_dlc_links: |
