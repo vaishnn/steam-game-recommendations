@@ -393,10 +393,10 @@ class SteamScraperApplication:
     def _load_and_validate_credentials(self):
         logging.info("Loading Credentials from .env file")
         db_creds = {
-            'host': CONFIG['db_host'],
-            'user': CONFIG['db_user'],
-            'password': CONFIG['db_password'],
-            'database': CONFIG['db_name'],
+            'host': CONFIG['DB_HOST'],
+            'user': CONFIG['DB_USER'],
+            'password': CONFIG['DB_PASSWORD'],
+            'database': CONFIG['DB_NAME'],
             'cursorclass': pymysql.cursors.DictCursor,
             'charset': 'utf8mb4'  # <-- ADD THIS LINE
         }
