@@ -229,7 +229,7 @@ class DatabaseManager:
 
     def get_all_processed_app_ids(self) -> set:
         logging.info("Fetching all processed app IDs...")
-        self.cursor.execute(self.schema['scrape_status']['all_prcoessed'])
+        self.cursor.execute(self.schema['queries']['scrape_status']['all_prcoessed'])
         processed_ids = {row['appid'] for row in self.cursor.fetchall()}
         logging.info(f"Found {len(processed_ids)} processed app IDs")
         return processed_ids
