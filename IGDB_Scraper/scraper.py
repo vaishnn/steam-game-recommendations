@@ -294,7 +294,7 @@ class DatabaseManager:
 
     def add_pending_dlc_link(self, dlc_id: int, base_game_id: int):
         logging.info(f"Adding pending DLC link for DLC ID {dlc_id} and base game ID {base_game_id}")
-        sql = self.schema['queries']['junction_tables']['add_pending_dlc_link']
+        sql = self.schema['queries']['junction_tables']['add_pending_dlc']
         self.cursor.execute(sql, (dlc_id, base_game_id))
 
     def resolve_pending_dlc_links(self):
@@ -352,7 +352,7 @@ class DatabaseManager:
     def add_reviews(self, reviews: list, app_id: str):
         if not reviews: return
         sql_insert_review = self.schema['queries']['reviews']['insert_update']
-        sql_link_review = self.schema['queries']['junction_tables']['insert_review_link']
+        sql_link_review = self.schema['queries']['junction_tables']['insert_reviews']
         review_tuples, link_tuples = [], []
 
         for r in reviews:

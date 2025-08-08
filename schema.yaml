@@ -127,7 +127,7 @@ queries:
     insert_language: "INSERT INTO app_supported_languages (app_id, language_id, is_full_audio) VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE is_full_audio=VALUES(is_full_audio)"
     insert_tag: "INSERT IGNORE INTO app_tags (app_id, tag_id, tag_value) VALUES (%s, %s, %s)"
     insert_reviews: "INSERT IGNORE INTO app_reviews (app_id, review_id) VALUES (%s, %s)"
-    add_pending_dlc_link: "INSERT IGNORE INTO pending_dlc_links (dlc_id, base_game_id) VALUES (%s, %s)"
+    add_pending_dlc: "INSERT IGNORE INTO pending_dlc_links (dlc_id, base_game_id) VALUES (%s, %s)"
   utility_queries:
     resolve_dlc_links: |
       UPDATE apps a
