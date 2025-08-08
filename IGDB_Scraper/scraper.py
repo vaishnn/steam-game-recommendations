@@ -48,6 +48,9 @@ def load_endpoints_file():
         logging.error(f"Error parsing {ENDPOINT_FILE}: {e}")
         raise
 
+load_dotenv()
+APPLIST_CACHE_FILE = 'applist.json'
+# All about Logging
 def manage_log_files():
     log_dir = ".old_logs"
     if not os.path.exists(log_dir):
@@ -59,12 +62,7 @@ def manage_log_files():
             logging.info(f"Archived old log files: {filename}")
     return f"scraper_log_{dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.log"
 
-load_dotenv()
-APPLIST_CACHE_FILE = 'applist.json'
-# 1. Create a unique, timestamped log file name for each run.
 log_filename = manage_log_files()
-
-# 2. Configure logging to output to BOTH the console and the new log file.
 logging.basicConfig(
     level=logging.INFO,
     format='[%(levelname).1s %(asctime)s] %(message)s',
@@ -76,6 +74,9 @@ logging.basicConfig(
 )
 
 class SteamAPI:
+    """
+    Handles all steam related stuff
+    """
     def __init__(self, steam_api_config: dict, scraper_settings: dict) -> None:
         self.config = steam_api_config
         self.settings = scraper_settings
@@ -196,17 +197,13 @@ class DatabaseManager:
     """
     Creates all data
     """
-    def __init__(self, schema_yaml_path: str = "schema.yaml"):
+    def __init__(self, db_creds: dict, schema_yaml_path: str = "schema.yaml"):
         self.schema = self._load_schema(schema_yaml_path)
         load_dotenv()
         try:
             self.connection = pymysql.connect(
-                host=str(os.getenv("DB_HOST")),
-                user=str(os.getenv("DB_USER")),
-                password=str(os.getenv("DB_PASSWORD")),
-                database=str(os.getenv("DB_NAME")),
-                charset='utf8mb4',
-                cursorclass=pymysql.cursors.DictCursor
+                host=db_creds['host'], user=db_creds['user'], password=db_creds['password'],
+                database=db_creds['database'], cursorclass=pymysql.cursors.DictCursor, charset='utf8mb4'
             )
             self.cursor = self.connection.cursor()
             self._creates_tables()
@@ -387,7 +384,8 @@ class DatabaseManager:
 class SteamScraperApplication:
     def __init__(self):
         self.args = self._setup_arg_parser()
-        self.db = DatabaseManager()
+        db_creds, steam_api_key = self._load_and_validate_credentials()
+        self.db = DatabaseManager(db_creds)
         self.steam_api = SteamAPI(CONFIG['steam_api'], CONFIG['scraper_settings'])
 
         # self.igdb_api = IGDB_API(CONFIG['scraper_settings'])
@@ -402,13 +400,16 @@ class SteamScraperApplication:
             'cursorclass': pymysql.cursors.DictCursor,
             'charset': 'utf8mb4'  # <-- ADD THIS LINE
         }
-        igdb_creds = {
-            'client_id': CONFIG['igdb_client_id'],
-            'client_secret': CONFIG['igdb_client_secret']
-        }
+        steam_api_key = os.getenv('STEAM_API_KEY')
+
+        all_creds = {**db_creds, 'steam_api_key': steam_api_key}
+        for key, value in all_creds.items():
+            if not value:
+                logging.error(f"FATAL: Required credential for '{key.upper()}' not set in your .env file.")
+                sys.exit(1)
 
         logging.info("Credentials loaded successfully")
-        return db_creds, igdb_creds
+        return db_creds, steam_api_key
 
     def run(self):
         logging.info(f"Steam Scraper {__version__} starting.")
@@ -429,9 +430,10 @@ class SteamScraperApplication:
         try:
             for i, appid_str in enumerate(app_ids):
                 appid = int(appid_str)
-                if appid in processed_id_set:
-                    self.show_progress_bar('Scraping', i + 1, total_apps, newly_processed_count)
-                    continue
+                if self.args.pre_filter:
+                    if appid in processed_id_set:
+                        self.show_progress_bar('Scraping', i + 1, total_apps, newly_processed_count)
+                        continue
                 self.show_progress_bar('Scraping', i + 1, total_apps, newly_processed_count)
                 if self.db.is_processed(appid):
                     sys.stdout.write('.');
