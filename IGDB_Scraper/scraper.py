@@ -453,9 +453,12 @@ class SteamScraperApplication:
                 spy_details = self.steam_api.get_steamspy_details(appid_str) if use_steamspy and app_type == 'game' else None
                 parsed_data = self._parse_app_data(app_details, spy_details)
 
+                self.db.add_app_and_relations(parsed_data)
+
+                self.db.commit()
                 if parsed_data.get('base_game_id'):
                    self.db.add_pending_dlc_link(appid, parsed_data['base_game_id'])
-                self.db.add_app_and_relations(parsed_data)
+
 
                 if app_type == "game":
                     # game_name = parsed_data['main_dict']['name']
