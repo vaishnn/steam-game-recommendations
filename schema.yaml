@@ -64,8 +64,19 @@ tables:
       dlc_id INT PRIMARY KEY, base_game_id INT NOT NULL, INDEX (base_game_id)
     );
   # ... (achievements, reviews, etc. are the same)
+  # In schema.yaml
+
   achievements: |
-    CREATE TABLE IF NOT EXISTS achievements ( id INT AUTO_INCREMENT PRIMARY KEY, app_id INT NOT NULL, api_name VARCHAR(255) NOT NULL, display_name VARCHAR(255), description TEXT, global_completion_rate DECIMAL(7, 4), UNIQUE KEY app_api_name_unique (app_id, api_name), FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE );
+    CREATE TABLE IF NOT EXISTS achievements (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      app_id INT NOT NULL,
+      api_name VARCHAR(255) NOT NULL,
+      display_name TEXT,  # CHANGED FROM VARCHAR(255) to TEXT
+      description TEXT,
+      global_completion_rate DECIMAL(7, 4),
+      UNIQUE KEY app_api_name_unique (app_id, api_name),
+      FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE
+    );
   reviews: |
     CREATE TABLE IF NOT EXISTS reviews ( review_id BIGINT PRIMARY KEY, author_steamid BIGINT, language VARCHAR(50), review_text TEXT, is_recommended BOOLEAN, votes_helpful INT, votes_funny INT, review_date DATETIME, review_source VARCHAR(100) DEFAULT 'Steam' );
   app_reviews: |

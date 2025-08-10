@@ -414,9 +414,15 @@ class SteamScraperApplication:
             logging.error("Could not retrieve app list, Exiting. ")
             sys.exit(1)
 
-        total_apps = len(app_ids)
+
         processed_in_db = self.db.get_processed_count()
         processed_id_set = self.db.get_all_processed_app_ids()
+        __temp_id = app_ids.copy()
+        for appid in app_ids:
+            if appid in processed_id_set:
+                __temp_id.remove(appid)
+        app_ids = [str(appid) for appid in __temp_id]
+        total_apps = len(app_ids)
         logging.info(f"Found {total_apps} total apps on steam.")
         logging.info(f"Resuming progress. Found {processed_in_db} apps in database.")
         shuffle(app_ids)
