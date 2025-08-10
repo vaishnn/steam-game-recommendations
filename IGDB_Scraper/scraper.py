@@ -420,7 +420,7 @@ class SteamScraperApplication:
         __temp_id = app_ids.copy()
         for appid in app_ids:
             if appid in processed_id_set:
-                __temp_id.remove(appid)
+                __temp_id.remove(str(appid))
         app_ids = [str(appid) for appid in __temp_id]
         total_apps = len(app_ids)
         logging.info(f"Found {total_apps} total apps on steam.")
