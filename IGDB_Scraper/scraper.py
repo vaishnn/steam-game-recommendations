@@ -13,6 +13,7 @@ import datetime as dt
 import logging
 import argparse
 import shutil
+from copy import deepcopy
 import yaml
 from dotenv import load_dotenv
 from typing import Dict, Any, Optional, List
@@ -417,10 +418,10 @@ class SteamScraperApplication:
 
         processed_in_db = self.db.get_processed_count()
         processed_id_set = self.db.get_all_processed_app_ids()
-        __temp_id = app_ids.copy()
+        __temp_id = deepcopy(app_ids)
         for appid in app_ids:
             if int(appid) in processed_id_set:
-                __temp_id.remove(str(appid))
+                __temp_id.remove(appid)
         app_ids = [str(appid) for appid in __temp_id]
         total_apps = len(app_ids)
         logging.info(f"Found {total_apps} total apps on steam.")
