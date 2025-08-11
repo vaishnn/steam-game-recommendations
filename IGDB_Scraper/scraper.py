@@ -419,7 +419,7 @@ class SteamScraperApplication:
         processed_id_set = self.db.get_all_processed_app_ids()
         __temp_id = app_ids.copy()
         for appid in app_ids:
-            if appid in processed_id_set:
+            if int(appid) in processed_id_set:
                 __temp_id.remove(str(appid))
         app_ids = [str(appid) for appid in __temp_id]
         total_apps = len(app_ids)
